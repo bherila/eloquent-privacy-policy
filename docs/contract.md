@@ -61,6 +61,7 @@ cannot error.
 | `UnsupportedProtectedOperation`  | a protected builder/model was asked to do something outside the matrix   |
 | `InvalidIdentifier`              | a table, column, operator or direction is not a plain trusted identifier |
 | `ActionDenied`                   | an action's rule set reduced to `Deny` (§6)                              |
+| `Action\MissingLockedRow`        | an anchor, the target, or a parent named by a foreign key does not exist |
 | `StageEvaluationFailed`          | one or more rules in an entered stage threw; wraps all of them, ordered by rule id |
 
 **Permutation invariance.** For a valid rule set, reordering rules within a
@@ -167,6 +168,14 @@ column and the connection share a character set (the framework default,
 `utf8mb4`). Ordered string comparison is not offered. Datetime parity assumes
 the application stores UTC.
 
+SQLite stores datetimes as text, where `12:00:00` and `12:00:00.000` would be
+different values. There the compiler compares
+`strftime('%Y-%m-%d %H:%M:%f', col)` instead, so the two are the same instant as
+they are everywhere else. `strftime` offers millisecond precision: on SQLite,
+values that differ only below a millisecond are not distinguished. A value
+SQLite cannot parse is treated like `NULL` by the compiler and is an
+`AttributeTypeMismatch` at runtime.
+
 ### 4.4 The composed read predicate
 
 With `H` = conjunction of mandatory predicates, `P` = disjunction of privileged,
@@ -240,8 +249,8 @@ with the caller's conditions confined to their own nested group, so a caller
 | pagination  | `paginate($perPage, $page)` with `1 ≤ $perPage ≤ maxPerPage` (default 200)                 |
 | relations   | `with([...])` for one-level `BelongsTo` / `HasMany` whose related model has a policy       |
 
-Filter columns must be plain identifiers (optionally `table.column` on the root
-table); operators come from a fixed list; values must be scalar, `null`,
+Filter, `select`, `orderBy` and `sum` columns must be plain identifiers
+(optionally `table.column` on the root table; any other table is rejected); operators come from a fixed list; values must be scalar, `null`,
 `DateTimeInterface`, or a list of those. Expressions, closures-as-values,
 builders and subqueries are rejected.
 

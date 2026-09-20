@@ -6,6 +6,7 @@ namespace BWH\EloquentPrivacyPolicy\Query;
 
 use BWH\EloquentPrivacyPolicy\Exceptions\InvalidIdentifier;
 use BWH\EloquentPrivacyPolicy\Exceptions\UnsupportedProtectedOperation;
+use BWH\EloquentPrivacyPolicy\Predicate\Identifier;
 use Closure;
 use DateTimeInterface;
 use Illuminate\Database\Query\Builder;
@@ -134,15 +135,7 @@ final class FilterGroup
     /** Accepts "column" or "<root table>.column"; always returns the qualified form. */
     private function column(string $column): string
     {
-        if (preg_match('/^(?:([A-Za-z_][A-Za-z0-9_]*)\.)?([A-Za-z_][A-Za-z0-9_]*)$/', $column, $parts) !== 1) {
-            throw new InvalidIdentifier(sprintf('"%s" is not a plain column name.', $column));
-        }
-
-        if ($parts[1] !== '' && $parts[1] !== $this->table) {
-            throw new InvalidIdentifier(sprintf('Filters may only reference columns of "%s".', $this->table));
-        }
-
-        return $this->table.'.'.$parts[2];
+        return Identifier::column($column, $this->table);
     }
 
     private function value(mixed $value): int|string|bool|float|DateTimeInterface

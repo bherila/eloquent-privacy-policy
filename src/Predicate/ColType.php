@@ -46,7 +46,7 @@ enum ColType: string
     public function rawValue(mixed $raw, string $column): int|string|bool|DateTimeImmutable
     {
         $normalised = match ($this) {
-            self::Int => is_int($raw) ? $raw : (is_string($raw) && preg_match('/^-?\d+$/', $raw) === 1 ? (int) $raw : null),
+            self::Int => is_int($raw) ? $raw : (is_string($raw) && preg_match('/\A-?\d+\z/', $raw) === 1 ? (int) $raw : null),
             self::String => is_string($raw) ? $raw : null,
             self::Bool => match (true) {
                 is_bool($raw) => $raw,

@@ -46,7 +46,7 @@ final readonly class Viewer
             return $id;
         }
 
-        if (preg_match('/^-?\d+$/', $id) === 1) {
+        if (preg_match('/\A-?\d+\z/', $id) === 1) {
             return (int) $id;
         }
 

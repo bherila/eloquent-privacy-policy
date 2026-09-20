@@ -189,6 +189,14 @@ trait HasPrivacyPolicy
         return parent::save($options);
     }
 
+    // Guarded on its own: without timestamps touch() returns before it reaches save().
+    public function touch($attribute = null)
+    {
+        $this->rejectWhenProtected(__FUNCTION__.'()');
+
+        return parent::touch($attribute);
+    }
+
     public function delete()
     {
         $this->rejectWhenProtected(__FUNCTION__.'()');

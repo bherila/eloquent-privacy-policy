@@ -18,6 +18,7 @@ use BWH\EloquentPrivacyPolicy\Predicate\InList;
 use BWH\EloquentPrivacyPolicy\Predicate\Negation;
 use BWH\EloquentPrivacyPolicy\Predicate\NullCheck;
 use BWH\EloquentPrivacyPolicy\Predicate\Predicate;
+use Illuminate\Database\Connection;
 use Illuminate\Database\Query\Builder;
 
 /**
@@ -79,6 +80,12 @@ final class PredicateCompiler
         $column = $this->column($predicate->column, $qualifier);
         $binding = $predicate->column->type->binding($predicate->value);
 
+        if ($this->storesDatetimeAsText($query, $predicate->column)) {
+            $this->textDatetime($query, $column, $predicate->op->value.' ?', [$binding.'.000']);
+
+            return;
+        }
+
         $query->where(function (Builder $group) use ($query, $predicate, $column, $binding): void {
             $group->whereNotNull($column)->where($column, $predicate->op->value, $binding);
 
@@ -95,6 +102,17 @@ final class PredicateCompiler
     {
         $column = $this->column($predicate->column, $qualifier);
         $bindings = array_map($predicate->column->type->binding(...), $predicate->values);
+
+        if ($this->storesDatetimeAsText($query, $predicate->column)) {
+            $this->textDatetime(
+                $query,
+                $column,
+                'IN ('.implode(', ', array_fill(0, count($bindings), '?')).')',
+                array_map(static fn (int|string $binding): string => $binding.'.000', $bindings),
+            );
+
+            return;
+        }
 
         $query->where(function (Builder $group) use ($query, $predicate, $column, $bindings): void {
             $group->whereNotNull($column)->whereIn($column, $bindings);
@@ -116,6 +134,12 @@ final class PredicateCompiler
     {
         $left = $this->column($predicate->left, $qualifier);
         $right = $this->column($predicate->right, $qualifier);
+
+        if ($this->storesDatetimeAsText($query, $predicate->left)) {
+            $this->textDatetime($query, $left, '= '.$this->normalisedDatetime($query, $right), [], $right);
+
+            return;
+        }
 
         $query->where(function (Builder $group) use ($query, $predicate, $left, $right): void {
             $group->whereNotNull($left)->whereNotNull($right)->whereColumn($left, '=', $right);
@@ -158,6 +182,45 @@ final class PredicateCompiler
         });
     }
 
+    /**
+     * SQLite keeps datetimes as text, so '12:00:00' and '12:00:00.000' are
+     * different values to a plain comparison while they are the same instant to
+     * every other engine and to the runtime evaluator. Compare normalised text
+     * instead (millisecond precision, which is all strftime offers). A value
+     * SQLite cannot parse normalises to NULL and is guarded like any other NULL.
+     *
+     * @param list<string> $bindings
+     */
+    private function textDatetime(Builder $query, string $column, string $comparison, array $bindings, ?string $other = null): void
+    {
+        $query->where(function (Builder $group) use ($query, $column, $comparison, $bindings, $other): void {
+            $group->whereRaw($this->normalisedDatetime($query, $column).' IS NOT NULL');
+
+            if ($other !== null) {
+                $group->whereRaw($this->normalisedDatetime($query, $other).' IS NOT NULL');
+            }
+
+            $group->whereRaw($this->normalisedDatetime($query, $column).' '.$comparison, $bindings);
+        });
+    }
+
+    private function normalisedDatetime(Builder $query, string $column): string
+    {
+        return sprintf("strftime('%%Y-%%m-%%d %%H:%%M:%%f', %s)", $query->getGrammar()->wrap($column));
+    }
+
+    private function storesDatetimeAsText(Builder $query, Col $column): bool
+    {
+        return $column->type === ColType::Datetime && $this->driver($query) === 'sqlite';
+    }
+
+    private function driver(Builder $query): string
+    {
+        $connection = $query->getConnection();
+
+        return $connection instanceof Connection ? $connection->getDriverName() : '';
+    }
+
     private function column(Col $column, string $qualifier): string
     {
         return $qualifier.'.'.Identifier::assert($column->name);
@@ -171,6 +234,6 @@ final class PredicateCompiler
     private function needsExactStringMatch(Builder $query, Col $column): bool
     {
         return $column->type === ColType::String
-            && in_array($query->getConnection()->getDriverName(), ['mysql', 'mariadb'], true);
+            && in_array($this->driver($query), ['mysql', 'mariadb'], true);
     }
 }

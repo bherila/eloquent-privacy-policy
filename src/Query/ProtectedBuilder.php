@@ -292,6 +292,10 @@ final class ProtectedBuilder
             throw new UnsupportedProtectedOperation('paginate() cannot be combined with limit() / offset().');
         }
 
+        if ($page > intdiv(PHP_INT_MAX, $perPage)) {
+            throw new UnsupportedProtectedOperation('The requested page is out of range.');
+        }
+
         $paginator = $this->query()->paginate($perPage, $this->columns ?? [$this->qualify('*', false)], 'page', max(1, $page));
 
         return $paginator->setCollection($this->protect($paginator->getCollection()->all()));
@@ -393,6 +397,8 @@ final class ProtectedBuilder
 
     private function qualify(string $column, bool $validate = true): string
     {
-        return $this->prototype->getTable().'.'.($validate ? Identifier::assert($column) : $column);
+        return $validate
+            ? Identifier::column($column, $this->prototype->getTable())
+            : $this->prototype->getTable().'.'.$column;
     }
 }

@@ -18,7 +18,7 @@ final class GuardAudit
 {
     public const array GUARDED = [
         'getRelationValue', 'newRelatedInstance', 'newMorphTo',
-        'save', 'delete', 'incrementOrDecrement', 'incrementOrDecrementEach',
+        'save', 'touch', 'delete', 'incrementOrDecrement', 'incrementOrDecrementEach',
         'refresh', 'fresh', 'load', 'loadMissing', 'loadAggregate', 'loadMorph', 'loadMorphAggregate',
     ];
 
