@@ -61,7 +61,8 @@ final readonly class ResolvedReadPolicy
 
         foreach (Stage::cases() as $stage) {
             foreach ($this->of($stage) as $id => $predicate) {
-                $rule = Rule::of($id, static fn (): Predicate => $predicate);
+                // PHP turns a numeric id such as "10" into an int array key.
+                $rule = Rule::of((string) $id, static fn (): Predicate => $predicate);
 
                 $rules = match ($stage) {
                     Stage::Mandatory => $rules->mandatory($rule),
