@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BWH\EloquentPrivacyPolicy\Predicate;
 
 use BWH\EloquentPrivacyPolicy\Exceptions\AttributeTypeMismatch;
+use BWH\EloquentPrivacyPolicy\Exceptions\UncompilablePolicy;
 use InvalidArgumentException;
 
 /**
@@ -40,6 +41,18 @@ final readonly class Exists extends Predicate
         }
 
         foreach ($matches as [$outer, $inner]) {
+            // Integer keys only. A string key cannot be kept exact everywhere:
+            // MariaDB's subquery cache keys a correlated column by its own
+            // collation, so 'Abc' would inherit the answer computed for 'abc'
+            // whatever the subquery itself compares.
+            if ($outer->type !== ColType::Int || $inner->type !== ColType::Int) {
+                throw new UncompilablePolicy(sprintf(
+                    'EXISTS over "%s" is correlated on a %s key; only integer keys are supported.',
+                    $table,
+                    $outer->type !== ColType::Int ? $outer->type->value : $inner->type->value,
+                ));
+            }
+
             if ($outer->type !== $inner->type) {
                 throw new AttributeTypeMismatch(sprintf(
                     'EXISTS match "%s" = "%s.%s" joins different declared types.',

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace BWH\EloquentPrivacyPolicy\Runtime;
 
 use BWH\EloquentPrivacyPolicy\Predicate\Exists;
-use LogicException;
+use BWH\EloquentPrivacyPolicy\Exceptions\MissingFact;
 
 /**
  * Batch-prepared answers for the Exists nodes of one predicate over one batch
@@ -35,7 +35,7 @@ final class ExistsFacts
     public function holds(Exists $node, string $tuple): bool
     {
         if (! $this->isPrepared($node)) {
-            throw new LogicException(sprintf(
+            throw new MissingFact(sprintf(
                 'The EXISTS over "%s" was not batch-prepared. Relationship facts are never loaded per row.',
                 $node->table,
             ));

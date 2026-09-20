@@ -64,6 +64,10 @@ cannot error.
 | `Action\MissingLockedRow`        | an anchor, the target, or a parent named by a foreign key does not exist |
 | `StageEvaluationFailed`          | one or more rules in an entered stage threw; wraps all of them, ordered by rule id |
 
+An error raised while a rule runs — including `PolicyCycle` from a `ViaParent`
+expansion — reaches the caller wrapped in `StageEvaluationFailed`, once per
+nesting level; the original is the innermost `getPrevious()`.
+
 **Permutation invariance.** For a valid rule set, reordering rules within a
 stage changes neither the decision nor whether an error is raised nor the set of
 wrapped errors. Rules must be pure and must not depend on each other.
@@ -128,7 +132,7 @@ closure form; the closure builds IR, it is not itself interpreted.
 | `->isNull()`, `->isNotNull()`          | the only way to talk about `NULL`                           |
 | `->eqCol(Col $other)`                  | same declared type on both sides                            |
 | `Predicate::all(...)`, `any(...)`, `not($p)` | conjunction, disjunction, negation                    |
-| `Exists::in($table)->match($outerCol, $innerCol)->where($p)` | constrained correlated `EXISTS`; inner predicate is over the inner table |
+| `Exists::in($table)->match($outerCol, $innerCol)->where($p)` | constrained correlated `EXISTS` on **integer** keys; inner predicate is over the inner table. Any other key type is `UncompilablePolicy`: a string key cannot be kept exact on every engine (MariaDB caches a correlated subquery by the outer column's own collation) |
 | `ViaParent::of($fk, ParentModel::class)` | "the parent row is visible under the parent's read policy"; expands to an `Exists` over the parent table, adds `deleted_at IS NULL` when the parent soft-deletes, detects cycles |
 
 Column and table names come from policy code and are validated as identifiers;
@@ -205,7 +209,7 @@ resolved. Both interpreters consume the same `ResolvedReadPolicy`:
 `RuntimeEvaluation::prepare($snapshots)` issues one bounded query per `Exists`
 node per batch (inner rows by join key, chunked), and the inner predicate is
 then evaluated in PHP. Evaluating an `Exists` node that was not prepared is an
-error; it never lazy-loads per row. The number of queries depends on the policy
+error (`MissingFact`); it never lazy-loads per row. The number of queries depends on the policy
 shape, not on the number of rows.
 
 ## 5. Protected query boundary **[slice 1]**

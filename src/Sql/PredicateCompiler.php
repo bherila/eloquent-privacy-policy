@@ -167,15 +167,8 @@ final class PredicateCompiler
                 $innerColumn = $this->column($inner, $alias);
 
                 // Top-level conjuncts of the subquery: an unknown comparison just fails to match.
+                // Match columns are integer keys by construction (see Exists::build).
                 $sub->whereColumn($innerColumn, '=', $outerColumn);
-
-                if ($this->needsExactStringMatch($sub, $outer)) {
-                    $sub->whereRaw(sprintf(
-                        'CAST(%s AS BINARY) = CAST(%s AS BINARY)',
-                        $sub->getGrammar()->wrap($innerColumn),
-                        $sub->getGrammar()->wrap($outerColumn),
-                    ));
-                }
             }
 
             $sub->where(fn (Builder $group) => $this->compile($group, $predicate->where, $alias, $depth + 1));

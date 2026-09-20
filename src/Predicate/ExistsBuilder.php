@@ -11,7 +11,7 @@ final readonly class ExistsBuilder
     {
     }
 
-    /** Correlate on integer keys, the usual case. */
+    /** Correlate on integer keys. */
     public function match(string $outerColumn, string $innerColumn): self
     {
         return $this->matchCols(Col::int($outerColumn), Col::int($innerColumn));
