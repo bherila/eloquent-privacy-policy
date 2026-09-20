@@ -85,6 +85,37 @@ final class NestedTransactionTest extends ActionTestCase
         $this->assertSame('r2', $this->row(Record::TABLE, 2)['title']);
     }
 
+    /**
+     * The auditor's "after the rollback, outside the transaction" holds at the
+     * outermost level only. Nested, the caller's transaction is still open when
+     * it runs, which is the fact the docs now state.
+     */
+    public function test_a_denial_is_audited_inside_the_callers_transaction_when_nested(): void
+    {
+        $this->registerRecordPolicy(['record.update' => RuleSet::define()->grant(ActionRules::ownsTarget())]);
+
+        $auditor = new RecordingAuditor();
+        $denied = fn (): RecordAction => RecordAction::update(2, ['title' => 'taken over'])->anchoredOn(new Anchor(Workspace::TABLE, 2));
+
+        try {
+            (new ActionExecutor($auditor))->execute($denied(), $this->context(1));
+            $this->fail('A denied action was executed.');
+        } catch (ActionDenied) {
+            $this->addToAssertionCount(1);
+        }
+
+        DB::transaction(function () use ($auditor, $denied): void {
+            try {
+                (new ActionExecutor($auditor))->execute($denied(), $this->context(1));
+                $this->fail('A denied action was executed.');
+            } catch (ActionDenied) {
+                $this->addToAssertionCount(1);
+            }
+        });
+
+        $this->assertSame([0, 1], $auditor->transactionLevels);
+    }
+
     public function test_an_action_nested_in_an_action_uses_its_own_savepoint(): void
     {
         $this->registerRecordPolicy([

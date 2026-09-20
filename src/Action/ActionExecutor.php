@@ -139,7 +139,8 @@ final readonly class ActionExecutor
                 return $receipt;
             });
         } catch (ActionDenied $denied) {
-            // After the rollback, outside the transaction, identifiers only.
+            // After our rollback, identifiers only. Outside a transaction only
+            // when this is the outermost one: nested, the caller's is still open.
             $this->auditor?->denied(DenialRecord::of($action, $context));
 
             throw $denied;

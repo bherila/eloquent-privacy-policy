@@ -336,8 +336,10 @@ which is loaded and locked like the pre-state.
 
 **Denial.** `Deny`, or any error, rolls back and throws (`ActionDenied` for a
 decision). No domain data is changed and no after-commit callback runs. The
-optional denial-audit hook runs after the rollback, outside the transaction, and
-receives identifiers only.
+optional denial-audit hook runs after the executor's rollback and receives
+identifiers only. It is outside any transaction only when the executor opened the
+outermost one; inside a caller's transaction it runs within that transaction, so
+an auditor that must survive the caller's rollback writes on its own connection.
 
 **Disclosure.** `ActionResult` always carries a `Receipt` (action, target key,
 optional version). `ActionResult::readable()` re-queries the target through the
