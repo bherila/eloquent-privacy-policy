@@ -43,7 +43,7 @@ final class ProtectedBuilder
     /** @var list<string>|null qualified column names */
     private ?array $columns = null;
 
-    /** @var list<array{string, string}> */
+    /** @var list<array{string, 'asc'|'desc'}> */
     private array $orders = [];
 
     private ?int $limit = null;
@@ -391,7 +391,13 @@ final class ProtectedBuilder
 
     private function bind(Model $model): void
     {
-        /** @var Model&object{bindPrivacyContext: callable} $model */
+        if (! method_exists($model, 'bindPrivacyContext')) {
+            throw new UnsupportedProtectedOperation(sprintf(
+                '%s must use the HasPrivacyPolicy trait: returned models could not be guarded otherwise.',
+                $model::class,
+            ));
+        }
+
         $model->bindPrivacyContext($this->context);
     }
 

@@ -19,26 +19,31 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class ProtectedCollection extends Collection
 {
+    /** @param array<array-key, mixed>|string $relations */
     public function load($relations)
     {
         throw self::rejected(__FUNCTION__);
     }
 
+    /** @param array<array-key, mixed>|string $relations */
     public function loadMissing($relations)
     {
         throw self::rejected(__FUNCTION__);
     }
 
+    /** @param array<array-key, mixed>|string $relations */
     public function loadAggregate($relations, $column, $function = null)
     {
         throw self::rejected(__FUNCTION__);
     }
 
+    /** @param array<array-key, mixed> $relations */
     public function loadMorph($relation, $relations)
     {
         throw self::rejected(__FUNCTION__);
     }
 
+    /** @param array<array-key, mixed> $relations */
     public function loadMorphCount($relation, $relations)
     {
         throw self::rejected(__FUNCTION__);

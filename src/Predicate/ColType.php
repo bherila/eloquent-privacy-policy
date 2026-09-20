@@ -77,8 +77,16 @@ enum ColType: string
     public function compare(int|string|bool|DateTimeImmutable $left, int|string|bool|DateTimeImmutable $right): int
     {
         if ($this === self::String) {
+            if (! is_string($left) || ! is_string($right)) {
+                throw new AttributeTypeMismatch(sprintf(
+                    'Column declared %s cannot compare a value of type %s.',
+                    $this->value,
+                    get_debug_type(is_string($left) ? $right : $left),
+                ));
+            }
+
             // Exact byte comparison; only equality is ever asked of strings.
-            return $left === $right ? 0 : strcmp((string) $left, (string) $right);
+            return $left === $right ? 0 : strcmp($left, $right);
         }
 
         return $left <=> $right;

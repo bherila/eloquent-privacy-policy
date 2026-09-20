@@ -38,11 +38,11 @@ abstract class TestCase extends BaseTestCase
         $config = match ($connection) {
             'mysql', 'mariadb' => [
                 'driver' => $connection,
-                'host' => env('DB_HOST', '127.0.0.1'),
-                'port' => env('DB_PORT', '3306'),
-                'database' => env('DB_DATABASE', 'testing'),
-                'username' => env('DB_USERNAME', 'root'),
-                'password' => env('DB_PASSWORD', ''),
+                'host' => self::dbEnv('DB_HOST', '127.0.0.1'),
+                'port' => self::dbEnv('DB_PORT', '3306'),
+                'database' => self::dbEnv('DB_DATABASE', 'testing'),
+                'username' => self::dbEnv('DB_USERNAME', 'root'),
+                'password' => self::dbEnv('DB_PASSWORD', ''),
                 'charset' => 'utf8mb4',
                 'collation' => 'utf8mb4_unicode_ci',
                 'prefix' => '',
@@ -68,12 +68,26 @@ abstract class TestCase extends BaseTestCase
      */
     protected function dbConnection(): string
     {
-        $connection = (string) env('DB_CONNECTION', 'sqlite');
+        $connection = self::dbEnv('DB_CONNECTION', 'sqlite');
 
         return match ($connection) {
             'mysql', 'mariadb', 'sqlite' => $connection,
             default => 'sqlite',
         };
+    }
+
+    /**
+     * Reads a DB_* environment variable directly via getenv()/$_ENV, bypassing
+     * Laravel's env() helper (which Larastan restricts to the config
+     * directory). CI sets these as real process environment variables, and
+     * phpunit.xml's <env> entries populate both $_ENV and putenv(), so both
+     * are checked here.
+     */
+    private static function dbEnv(string $name, string $default): string
+    {
+        $value = $_ENV[$name] ?? getenv($name);
+
+        return is_string($value) && $value !== '' ? $value : $default;
     }
 
     /**

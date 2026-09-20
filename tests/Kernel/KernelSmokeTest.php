@@ -151,7 +151,14 @@ final class KernelSmokeTest extends TestCase
 
         $folder = Folder::privacyQuery($this->context(1))->findOrFail(1);
         $this->assertSame([4], $folder->notes->modelKeys());
-        $this->assertTrue($folder->notes->first()->isPrivacyProtected());
+
+        $firstNote = $folder->notes->first();
+
+        if ($firstNote === null) {
+            $this->fail('Expected folder to have at least one note.');
+        }
+
+        $this->assertTrue($firstNote->isPrivacyProtected());
 
         foreach ([
             fn () => $note->folder(),
@@ -175,7 +182,13 @@ final class KernelSmokeTest extends TestCase
         }
 
         // Ordinary, unmigrated usage is unchanged.
-        $this->assertSame(3, Note::query()->findOrFail(1)->folder->getKey());
+        $plainFolder = Note::query()->findOrFail(1)->folder;
+
+        if ($plainFolder === null) {
+            $this->fail('Expected the plain note to have a folder.');
+        }
+
+        $this->assertSame(3, $plainFolder->getKey());
     }
 
     public function test_a_partial_snapshot_is_an_error_not_a_null(): void
@@ -199,7 +212,7 @@ final class KernelSmokeTest extends TestCase
         $sql = Note::privacyQuery($context)->orderBy('id')->get()->modelKeys();
 
         $resolved = (new PolicyResolver())->resolveRead(Note::class, $context);
-        $rows = Note::query()->orderBy('id')->get()->map(fn (Note $n) => RowSnapshot::fromModel($n))->all();
+        $rows = array_values(Note::query()->orderBy('id')->get()->map(fn (Note $n) => RowSnapshot::fromModel($n))->all());
         $facts = (new RelationFactLoader(DB::connection()))->prepare($resolved->toPredicate(), $rows);
 
         $runtime = [];

@@ -141,6 +141,7 @@ trait HasPrivacyPolicy
         return parent::refresh();
     }
 
+    /** @param array<array-key, mixed>|string $with */
     public function fresh($with = [])
     {
         $this->rejectWhenProtected(__FUNCTION__.'()');
@@ -148,6 +149,7 @@ trait HasPrivacyPolicy
         return parent::fresh($with);
     }
 
+    /** @param array<array-key, mixed>|string $relations */
     public function load($relations)
     {
         $this->rejectWhenProtected(__FUNCTION__.'()');
@@ -155,6 +157,7 @@ trait HasPrivacyPolicy
         return parent::load(...func_get_args());
     }
 
+    /** @param array<array-key, mixed>|string $relations */
     public function loadMissing($relations)
     {
         $this->rejectWhenProtected(__FUNCTION__.'()');
@@ -162,6 +165,7 @@ trait HasPrivacyPolicy
         return parent::loadMissing(...func_get_args());
     }
 
+    /** @param array<array-key, mixed>|string $relations */
     public function loadAggregate($relations, $column, $function = null)
     {
         $this->rejectWhenProtected(__FUNCTION__.'()');
@@ -169,6 +173,7 @@ trait HasPrivacyPolicy
         return parent::loadAggregate($relations, $column, $function);
     }
 
+    /** @param array<array-key, mixed> $relations */
     public function loadMorph($relation, $relations)
     {
         $this->rejectWhenProtected(__FUNCTION__.'()');
@@ -176,6 +181,7 @@ trait HasPrivacyPolicy
         return parent::loadMorph($relation, $relations);
     }
 
+    /** @param array<array-key, mixed> $relations */
     public function loadMorphAggregate($relation, $relations, $column, $function = null)
     {
         $this->rejectWhenProtected(__FUNCTION__.'()');
@@ -195,6 +201,7 @@ trait HasPrivacyPolicy
     }
 
     // Guarded on its own: without timestamps touch() returns before it reaches save().
+    /** @param array<array-key, mixed>|string|null $attribute */
     public function touch($attribute = null)
     {
         $this->rejectWhenProtected(__FUNCTION__.'()');
@@ -209,6 +216,7 @@ trait HasPrivacyPolicy
         return parent::delete();
     }
 
+    /** @param array<array-key, mixed> $extra */
     protected function incrementOrDecrement($column, $amount, $extra, $method)
     {
         $this->rejectWhenProtected($method.'()');

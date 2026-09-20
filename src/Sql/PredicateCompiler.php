@@ -90,7 +90,7 @@ final class PredicateCompiler
             $group->whereNotNull($column)->where($column, $predicate->op->value, $binding);
 
             if ($this->needsExactStringMatch($query, $predicate->column)) {
-                $group->whereRaw(
+                $this->raw($group, 
                     sprintf('CAST(%s AS BINARY) = CAST(? AS BINARY)', $query->getGrammar()->wrap($column)),
                     [$binding],
                 );
@@ -118,7 +118,7 @@ final class PredicateCompiler
             $group->whereNotNull($column)->whereIn($column, $bindings);
 
             if ($this->needsExactStringMatch($query, $predicate->column)) {
-                $group->whereRaw(
+                $this->raw($group, 
                     sprintf(
                         'CAST(%s AS BINARY) IN (%s)',
                         $query->getGrammar()->wrap($column),
@@ -145,7 +145,7 @@ final class PredicateCompiler
             $group->whereNotNull($left)->whereNotNull($right)->whereColumn($left, '=', $right);
 
             if ($this->needsExactStringMatch($query, $predicate->left)) {
-                $group->whereRaw(sprintf(
+                $this->raw($group, sprintf(
                     'CAST(%s AS BINARY) = CAST(%s AS BINARY)',
                     $query->getGrammar()->wrap($left),
                     $query->getGrammar()->wrap($right),
@@ -187,14 +187,25 @@ final class PredicateCompiler
     private function textDatetime(Builder $query, string $column, string $comparison, array $bindings, ?string $other = null): void
     {
         $query->where(function (Builder $group) use ($query, $column, $comparison, $bindings, $other): void {
-            $group->whereRaw($this->normalisedDatetime($query, $column).' IS NOT NULL');
+            $this->raw($group, $this->normalisedDatetime($query, $column).' IS NOT NULL');
 
             if ($other !== null) {
-                $group->whereRaw($this->normalisedDatetime($query, $other).' IS NOT NULL');
+                $this->raw($group, $this->normalisedDatetime($query, $other).' IS NOT NULL');
             }
 
-            $group->whereRaw($this->normalisedDatetime($query, $column).' '.$comparison, $bindings);
+            $this->raw($group, $this->normalisedDatetime($query, $column).' '.$comparison, $bindings);
         });
+    }
+
+    /**
+     * Raw fragments are built only from fixed text and grammar-wrapped, validated
+     * identifiers; values always travel as bindings.
+     *
+     * @param list<int|string> $bindings
+     */
+    private function raw(Builder $group, string $sql, array $bindings = []): void
+    {
+        $group->whereRaw(new TrustedFragment($sql), $bindings);
     }
 
     private function normalisedDatetime(Builder $query, string $column): string

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BWH\EloquentPrivacyPolicy\Predicate;
 
-use BWH\EloquentPrivacyPolicy\Exceptions\AttributeTypeMismatch;
 use BWH\EloquentPrivacyPolicy\Exceptions\UncompilablePolicy;
 use InvalidArgumentException;
 
@@ -50,15 +49,6 @@ final readonly class Exists extends Predicate
                     'EXISTS over "%s" is correlated on a %s key; only integer keys are supported.',
                     $table,
                     $outer->type !== ColType::Int ? $outer->type->value : $inner->type->value,
-                ));
-            }
-
-            if ($outer->type !== $inner->type) {
-                throw new AttributeTypeMismatch(sprintf(
-                    'EXISTS match "%s" = "%s.%s" joins different declared types.',
-                    $outer->name,
-                    $table,
-                    $inner->name,
                 ));
             }
         }

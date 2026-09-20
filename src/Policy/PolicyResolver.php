@@ -115,8 +115,7 @@ final readonly class PolicyResolver
         $parent = new ($via->parent)();
         $visible = $this->resolve($via->parent, $context, [...$stack, $via->parent])->toPredicate();
 
-        if (in_array(SoftDeletes::class, class_uses_recursive($parent), true)) {
-            /** @var Model&object{getDeletedAtColumn: callable} $parent */
+        if (in_array(SoftDeletes::class, class_uses_recursive($parent), true) && method_exists($parent, 'getDeletedAtColumn')) {
             $visible = Predicate::all($visible, Col::datetime($parent->getDeletedAtColumn())->isNull());
         }
 

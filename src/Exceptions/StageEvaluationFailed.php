@@ -16,7 +16,8 @@ final class StageEvaluationFailed extends PrivacyException
     /** @param array<string, Throwable> $failures keyed by rule id, sorted by key */
     public function __construct(public readonly string $stage, public readonly array $failures)
     {
-        $first = $failures[array_key_first($failures)] ?? null;
+        $firstKey = array_key_first($failures);
+        $first = $firstKey !== null ? $failures[$firstKey] : null;
 
         parent::__construct(
             sprintf('Stage "%s" failed in rule(s): %s', $stage, implode(', ', array_keys($failures))),

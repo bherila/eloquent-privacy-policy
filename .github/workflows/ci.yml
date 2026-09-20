@@ -42,7 +42,7 @@ jobs:
         run: composer install --no-interaction --prefer-dist
 
       - name: PHPStan
-        run: vendor/bin/phpstan analyse --no-progress
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 
   tests:
     name: PHP ${{ matrix.php }} / ${{ matrix.db }}
