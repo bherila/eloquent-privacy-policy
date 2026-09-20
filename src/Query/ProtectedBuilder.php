@@ -16,6 +16,7 @@ use BWH\EloquentPrivacyPolicy\Sql\PredicateCompiler;
 use Closure;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -321,7 +322,9 @@ final class ProtectedBuilder
     private function query(bool $shaped = true): EloquentBuilder
     {
         /** @var EloquentBuilder<TModel> $query */
-        $query = $this->prototype->newQuery();
+        // Without the model's own $with: those loads would go around the related
+        // model's policy. (A model-level $withCount is refused by GuardAudit.)
+        $query = $this->prototype->newQueryWithoutRelationships();
         $base = $query->getQuery();
         $compiler = new PredicateCompiler();
 
@@ -341,7 +344,11 @@ final class ProtectedBuilder
         }
 
         if ($this->columns !== null) {
-            $query->select($this->columns);
+            // An eager load matches on these; without them every row would read
+            // as "no visible parent", which is a different answer.
+            $keys = array_map(fn (RelationShape $shape): string => $this->qualify($shape->parentColumn), array_values($this->with));
+
+            $query->select(array_values(array_unique([...$this->columns, ...$keys])));
         }
 
         foreach ($this->orders as [$column, $direction]) {
@@ -361,6 +368,7 @@ final class ProtectedBuilder
             $predicate = (new PolicyResolver())->resolveRead($shape->related, $this->context)->toPredicate();
 
             $query->with([$name => static function (Relation $relation) use ($compiler, $predicate, $related): void {
+                $relation->getQuery()->setEagerLoads([]);
                 $compiler->apply($relation->getQuery()->getQuery(), $predicate, $related->getTable());
             }]);
         }
@@ -375,18 +383,33 @@ final class ProtectedBuilder
     private function protect(array $models): ProtectedCollection
     {
         foreach ($models as $model) {
-            $this->bind($model);
-
-            foreach (array_keys($this->with) as $name) {
-                $loaded = $model->getRelation($name);
-
-                foreach ($loaded instanceof Model ? [$loaded] : ($loaded ?? []) as $related) {
-                    $this->bind($related);
-                }
-            }
+            $this->seal($model);
         }
 
         return new ProtectedCollection(array_values($models));
+    }
+
+    /**
+     * Protection is closed under reachability: every model reachable through a
+     * loaded relation is bound to the same context, and every loaded collection
+     * becomes a ProtectedCollection, so nothing reachable can be reloaded or
+     * queried around its guards.
+     */
+    private function seal(Model $model): void
+    {
+        $this->bind($model);
+
+        foreach ($model->getRelations() as $name => $loaded) {
+            if ($loaded instanceof Model) {
+                $this->seal($loaded);
+            } elseif ($loaded instanceof EloquentCollection) {
+                foreach ($loaded as $related) {
+                    $this->seal($related);
+                }
+
+                $model->setRelation($name, new ProtectedCollection($loaded->all()));
+            }
+        }
     }
 
     private function bind(Model $model): void

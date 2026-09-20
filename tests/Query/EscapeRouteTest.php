@@ -203,20 +203,24 @@ final class EscapeRouteTest extends FixtureTestCase
         );
     }
 
-    public function test_replicate_and_new_instance_do_not_carry_the_context(): void
+    public function test_a_copy_is_refused_and_a_new_instance_carries_nothing(): void
     {
         $record = ClinicalRecord::privacyQuery($this->context(1))->findOrFail(1);
 
-        // Both produce a *new, unsaved* row rather than a handle on this one,
-        // so they are ordinary models; what matters is that they hold no key.
-        $replica = $record->replicate();
+        // replicate() drops the primary key but keeps the foreign keys, so an
+        // unbound copy could lazy-load its parent around the parent's policy.
+        try {
+            $record->replicate();
+            $this->fail('A protected model was copied into an unguarded instance.');
+        } catch (UnsupportedProtectedOperation) {
+            $this->addToAssertionCount(1);
+        }
+
+        // newInstance() is an empty row: no key, no foreign keys, nothing to reach.
         $fresh = $record->newInstance();
 
-        $this->assertFalse($replica->exists);
-        $this->assertNull($replica->getKey());
         $this->assertFalse($fresh->exists);
-        $this->assertNull($fresh->getKey());
-        $this->assertFalse($replica->isPrivacyProtected());
+        $this->assertSame([], $fresh->getAttributes());
         $this->assertFalse($fresh->isPrivacyProtected());
     }
 

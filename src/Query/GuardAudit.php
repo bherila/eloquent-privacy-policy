@@ -18,7 +18,7 @@ final class GuardAudit
 {
     public const array GUARDED = [
         'getRelationValue', 'newRelatedInstance', 'newMorphTo',
-        'save', 'touch', 'delete', 'incrementOrDecrement', 'incrementOrDecrementEach',
+        'save', 'touch', 'delete', 'replicate', 'incrementOrDecrement', 'incrementOrDecrementEach',
         'refresh', 'fresh', 'load', 'loadMissing', 'loadAggregate', 'loadMorph', 'loadMorphAggregate',
     ];
 
@@ -50,6 +50,15 @@ final class GuardAudit
     /** @param class-string<Model> $model */
     public static function assertIntact(string $model): void
     {
+        // A model-level $withCount adds an aggregate over related rows to every
+        // query, counting rows the viewer may not see.
+        if (((new ReflectionClass($model))->getDefaultProperties()['withCount'] ?? []) !== []) {
+            throw new UnsupportedProtectedOperation(sprintf(
+                '%s declares a model-level $withCount, which would count related rows around their policy.',
+                $model,
+            ));
+        }
+
         $overridden = self::overridden($model);
 
         if ($overridden !== []) {

@@ -271,9 +271,19 @@ plain PHP property, never an attribute, never static). On such an instance:
 | calling the relation method directly, `$m->children()`   | **rejected** — it would hand out a raw builder whose `orWhere` escapes both constraints |
 | other relation types, or a related model without a policy | **rejected**                                                   |
 | `refresh`, `fresh`, `load*`, `loadMissing`               | **rejected** — re-query through a protected builder             |
+| `replicate`                                              | **rejected** — a copy keeps the foreign keys but not the context, so its relations would load around every policy |
 | `save`, `saveQuietly`, `update`, `push`, `delete`, `forceDelete`, `increment`/`decrement`, `touch`, `restore` | **rejected** — a read never authorises a write; use an action |
 
 Rejected means `UnsupportedProtectedOperation`.
+
+**Closure.** Protection is closed under reachability: every model reachable
+from a protected result through a loaded relation is bound to the same context,
+and every loaded collection is a `ProtectedCollection`. To keep that true the
+builder ignores a model's own `$with` (on the root and on eager-loaded related
+models) — those loads would go around the related policy — and refuses a model
+that declares a `$withCount`. A `select()` always keeps the key columns an
+eager load matches on, so a parent never reads as "not visible" merely because
+its key was not selected.
 
 ### 5.3 Not supported
 

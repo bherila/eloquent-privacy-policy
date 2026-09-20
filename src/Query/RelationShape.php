@@ -73,6 +73,8 @@ final readonly class RelationShape
             ));
         }
 
+        GuardAudit::assertIntact($shape->related);
+
         if (! Privacy::hasPolicy($shape->related)) {
             throw new UnsupportedProtectedOperation(sprintf(
                 'Relation %s::%s() leads to %s, which has no privacy policy.',

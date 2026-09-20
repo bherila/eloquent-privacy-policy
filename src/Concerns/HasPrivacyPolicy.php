@@ -200,6 +200,16 @@ trait HasPrivacyPolicy
         return parent::save($options);
     }
 
+    // A copy is a new, unbound instance carrying the same keys: its relations
+    // would load around every policy, and saving it would write from a read.
+    /** @param list<string>|null $except */
+    public function replicate(?array $except = null)
+    {
+        $this->rejectWhenProtected(__FUNCTION__.'()');
+
+        return parent::replicate($except);
+    }
+
     // Guarded on its own: without timestamps touch() returns before it reaches save().
     /** @param array<array-key, mixed>|string|null $attribute */
     public function touch($attribute = null)
