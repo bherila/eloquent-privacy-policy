@@ -1,0 +1,39 @@
+{
+  "name": "bherila/eloquent-privacy-policy",
+  "description": "SQL-first privacy policy enforcement for Eloquent models.",
+  "type": "library",
+  "license": "MIT",
+  "homepage": "https://github.com/bherila/eloquent-privacy-policy",
+  "support": {
+    "issues": "https://github.com/bherila/eloquent-privacy-policy/issues",
+    "source": "https://github.com/bherila/eloquent-privacy-policy"
+  },
+  "require": {
+    "php": "^8.4",
+    "illuminate/contracts": "^13.0",
+    "illuminate/database": "^13.0",
+    "illuminate/support": "^13.0"
+  },
+  "require-dev": {
+    "orchestra/testbench": "^11.0",
+    "phpunit/phpunit": "^11.0",
+    "larastan/larastan": "^3.0",
+    "phpstan/phpstan": "^2.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "BWH\\EloquentPrivacyPolicy\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "BWH\\EloquentPrivacyPolicy\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "phpunit",
+    "analyse": "phpstan analyse"
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}

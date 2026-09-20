@@ -1,0 +1,6 @@
+/vendor/
+.phpunit.result.cache
+.phpunit.cache/
+.DS_Store
+/benchmarks/results
+.env
