@@ -24,8 +24,13 @@ use Illuminate\Database\Eloquent\Model;
  */
 trait HasPrivacyPolicy
 {
-    /** Set on instances returned by a protected builder. A plain property: never an attribute, never static. */
-    private ?PrivacyContext $privacyContext = null;
+    /**
+     * Set on instances returned by a protected builder. A plain property: never
+     * an attribute, never static. Protected rather than private so that the
+     * framework's __sleep(), which runs in the parent's scope, keeps it: a
+     * serialize round trip must not hand back an unguarded copy.
+     */
+    protected ?PrivacyContext $privacyContext = null;
 
     /** @return ProtectedBuilder<static> */
     public static function privacyQuery(?PrivacyContext $context): ProtectedBuilder
