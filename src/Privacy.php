@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace BWH\EloquentPrivacyPolicy;
 
+use BWH\EloquentPrivacyPolicy\Action\Anchor;
+use BWH\EloquentPrivacyPolicy\Action\AnchorLock;
+use BWH\EloquentPrivacyPolicy\Action\MissingLockedRow;
 use BWH\EloquentPrivacyPolicy\Concerns\HasPrivacyPolicy;
 use BWH\EloquentPrivacyPolicy\Context\PrivacyContext;
 use BWH\EloquentPrivacyPolicy\Exceptions\PolicyNotRegistered;
 use BWH\EloquentPrivacyPolicy\Policy\ModelPolicy;
 use BWH\EloquentPrivacyPolicy\Query\ProtectedBuilder;
 use Closure;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -66,6 +70,34 @@ final class Privacy
     public static function query(string $model, ?PrivacyContext $context): ProtectedBuilder
     {
         return ProtectedBuilder::for($model, $context);
+    }
+
+    /**
+     * The grant writer's half of the revocation protocol (contract 6.1): take
+     * the same anchors, in the same order, inside a transaction, and only then
+     * mutate the grant.
+     *
+     * A writer that skips this is simply not covered — nothing here can make a
+     * revocation that never took the anchor wait for an action, or an action
+     * notice it.
+     *
+     * @template TReturn
+     *
+     * @param list<Anchor> $anchors
+     * @param Closure(): TReturn $work
+     * @return TReturn
+     *
+     * @throws MissingLockedRow when an anchor row does not exist
+     */
+    public static function withAnchors(array $anchors, Closure $work, ?ConnectionInterface $connection = null): mixed
+    {
+        $connection ??= Model::resolveConnection();
+
+        return $connection->transaction(static function () use ($connection, $anchors, $work): mixed {
+            AnchorLock::take($connection, $anchors);
+
+            return $work();
+        });
     }
 
     /** Forget every registered definition. For tests. */
