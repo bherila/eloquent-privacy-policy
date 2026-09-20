@@ -17,6 +17,7 @@ use BWH\EloquentPrivacyPolicy\Predicate\ViaParent;
 use BWH\EloquentPrivacyPolicy\Privacy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 /**
  * Turns (read rule set, context) into a ResolvedReadPolicy. Rule closures run
@@ -113,6 +114,23 @@ final readonly class PolicyResolver
         }
 
         $parent = new ($via->parent)();
+
+        // The EXISTS is built from the parent's privacy policy and its
+        // soft-delete column only. Any other global scope (a tenant boundary,
+        // say) would be silently absent from it, leaving a child visible whose
+        // parent is hidden on a direct protected query. Refuse rather than
+        // weaken: the boundary has to be stated in the parent's policy, where
+        // ViaParent does expand it.
+        foreach (array_keys($parent->getGlobalScopes()) as $scope) {
+            if ($scope !== SoftDeletingScope::class) {
+                throw new UncompilablePolicy(sprintf(
+                    'ViaParent to %s cannot honour its global scope "%s". State that boundary in the parent\'s mandatory stage instead.',
+                    $via->parent,
+                    $scope,
+                ));
+            }
+        }
+
         $visible = $this->resolve($via->parent, $context, [...$stack, $via->parent])->toPredicate();
 
         if (in_array(SoftDeletes::class, class_uses_recursive($parent), true) && method_exists($parent, 'getDeletedAtColumn')) {

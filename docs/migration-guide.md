@@ -75,6 +75,11 @@ everything."
   policy's own mandatory stage should also enforce that boundary (redundant
   but explicit) or whether you are relying on the global scope alone — the
   latter means the boundary is invisible to anyone reading the policy.
+  A model with such a scope cannot be the parent of a `ViaParent`: the
+  expansion reproduces the parent's privacy policy and its soft-delete column
+  only, so it refuses (`UncompilablePolicy`) rather than leave a child visible
+  whose parent the scope hides. State the boundary in the parent's mandatory
+  stage, where `ViaParent` does carry it.
 - **Headless / CLI contexts.** A console command or a cron job has no
   authenticated user. Contract §3 requires an explicit context — there is no
   implicit "console is privileged" path, and there must not be one built on

@@ -133,7 +133,7 @@ closure form; the closure builds IR, it is not itself interpreted.
 | `->eqCol(Col $other)`                  | same declared type on both sides                            |
 | `Predicate::all(...)`, `any(...)`, `not($p)` | conjunction, disjunction, negation                    |
 | `Exists::in($table)->match($outerCol, $innerCol)->where($p)` | constrained correlated `EXISTS` on **integer** keys; inner predicate is over the inner table. Any other key type is `UncompilablePolicy`: a string key cannot be kept exact on every engine (MariaDB caches a correlated subquery by the outer column's own collation) |
-| `ViaParent::of($fk, ParentModel::class)` | "the parent row is visible under the parent's read policy"; expands to an `Exists` over the parent table, adds `deleted_at IS NULL` when the parent soft-deletes, detects cycles |
+| `ViaParent::of($fk, ParentModel::class)` | "the parent row is visible under the parent's read policy"; expands to an `Exists` over the parent table, adds `deleted_at IS NULL` when the parent soft-deletes, detects cycles. A parent with any *other* global scope is refused (`UncompilablePolicy`): the `EXISTS` cannot reproduce it, so the boundary must be stated in the parent's own policy |
 
 Column and table names come from policy code and are validated as identifiers;
 values are always bound. Nothing else is expressible. In particular there is no

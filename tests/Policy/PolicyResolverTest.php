@@ -26,6 +26,7 @@ use BWH\EloquentPrivacyPolicy\Tests\Fixtures\Clinical\ClinicalRecord;
 use BWH\EloquentPrivacyPolicy\Tests\Fixtures\Clinical\Patient;
 use BWH\EloquentPrivacyPolicy\Tests\Fixtures\FixtureTestCase;
 use BWH\EloquentPrivacyPolicy\Tests\Fixtures\Odd\CycleLeft;
+use BWH\EloquentPrivacyPolicy\Tests\Fixtures\Odd\ScopedParent;
 use BWH\EloquentPrivacyPolicy\Tests\Fixtures\Odd\Unpoliced;
 use BWH\EloquentPrivacyPolicy\Tests\Fixtures\Qa\Question;
 use BWH\EloquentPrivacyPolicy\Tests\Fixtures\Support\PredicateDescriber;
@@ -231,6 +232,44 @@ final class PolicyResolverTest extends FixtureTestCase
             $this->assertInstanceOf(PolicyCycle::class, $cycle);
             $this->assertStringContainsString('Policy cycle', $cycle->getMessage());
         }
+    }
+
+    /**
+     * Contract 4.4: ViaParent reproduces the parent's read policy and its
+     * soft-delete column, nothing else. A parent with any other global scope is
+     * refused, because the child would stay visible while the parent is hidden
+     * on a direct protected query.
+     */
+    public function test_via_parent_refuses_a_parent_with_a_global_scope_it_cannot_reproduce(): void
+    {
+        Privacy::register(ScopedParent::class, ScopedParent::privacyPolicy());
+        Privacy::register(Question::class, ModelPolicy::for(Question::class)->read(
+            RuleSet::define()->grant(Rule::of('via-scoped', fn () => ViaParent::of('workspace_id', ScopedParent::class))),
+        ));
+
+        try {
+            (new PolicyResolver())->resolveRead(Question::class, $this->context(1));
+            $this->fail('A ViaParent to a parent with a tenant scope compiled without it.');
+        } catch (StageEvaluationFailed $failure) {
+            $refused = $this->rootCause($failure);
+
+            $this->assertInstanceOf(UncompilablePolicy::class, $refused);
+            $this->assertStringContainsString('mandatory stage', $refused->getMessage());
+        }
+    }
+
+    public function test_via_parent_still_accepts_a_parent_whose_only_scope_is_soft_deletes(): void
+    {
+        Privacy::register(Patient::class, ModelPolicy::for(Patient::class)->read(
+            RuleSet::define()->grant(Rule::of('open', fn () => Predicate::always())),
+        ));
+        Privacy::register(ClinicalRecord::class, ModelPolicy::for(ClinicalRecord::class)->read(
+            RuleSet::define()->grant(Rule::of('via-patient', fn () => ViaParent::of('patient_id', Patient::class))),
+        ));
+
+        $predicate = (new PolicyResolver())->resolveRead(ClinicalRecord::class, $this->context(1))->toPredicate();
+
+        $this->assertStringContainsString('deleted_at', PredicateDescriber::describe($predicate));
     }
 
     /** Unwrap nested stage failures down to the exception a rule actually threw. */
