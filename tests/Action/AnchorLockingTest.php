@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BWH\EloquentPrivacyPolicy\Tests\Action;
 
 use BWH\EloquentPrivacyPolicy\Action\ActionExecutor;
+use BWH\EloquentPrivacyPolicy\Decision;
 use BWH\EloquentPrivacyPolicy\Action\Anchor;
 use BWH\EloquentPrivacyPolicy\Action\AnchorLock;
 use BWH\EloquentPrivacyPolicy\Action\MissingLockedRow;
@@ -139,6 +140,30 @@ final class AnchorLockingTest extends ActionTestCase
             [['act_a', 2], ['act_a', 10], ['act_a', 10], ['act_b', 2], ['act_b', 'a'], ['act_b', 'x']],
             array_map(static fn (Anchor $anchor): array => [$anchor->table, $anchor->key], $ordered),
         );
+    }
+
+
+    public function test_the_two_parents_of_a_move_are_locked_in_key_order_whichever_way_it_goes(): void
+    {
+        $this->registerRecordPolicy(['record.move' => RuleSet::define()->terminal(Decision::Allow)]);
+
+        $parentLocks = function (int $record, int $to): array {
+            return array_values(array_map(
+                static fn (array $lock): mixed => $lock[1],
+                array_filter($this->recordQueries(function () use ($record, $to): void {
+                    (new ActionExecutor())->execute(
+                        RecordAction::update($record, ['workspace_id' => $to], 'record.move')->under(self::workspaceLink()),
+                        $this->context(1),
+                    );
+                }), static fn (array $lock): bool => $lock[0] === Workspace::TABLE),
+            ));
+        };
+
+        // Record 1 sits in workspace 1. Moving it up and then back down must
+        // take the same two row locks in the same order, or two opposite moves
+        // would deadlock.
+        $this->assertSame([1, 3], $parentLocks(1, 3));
+        $this->assertSame([1, 3], $parentLocks(1, 1));
     }
 
     /**

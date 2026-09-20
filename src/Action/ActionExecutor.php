@@ -202,9 +202,28 @@ final readonly class ActionExecutor
             return [$this->loadParent($link, $reparents ? $changes[$link->foreignKey] : null, 'creation parent'), null];
         }
 
+        $currentKey = $preState->get($link->foreignKey);
+
+        if (! $reparents) {
+            return [$this->loadParent($link, $currentKey, 'parent'), null];
+        }
+
+        $proposedKey = $changes[$link->foreignKey];
+
+        // Both parents are rows of one table, locked FOR UPDATE. Take them in
+        // key order, like anchors: a move from A to B racing a move from B to A
+        // would otherwise lock A-then-B against B-then-A and deadlock.
+        if ((is_int($currentKey) || is_string($currentKey))
+            && (is_int($proposedKey) || is_string($proposedKey))
+            && ($proposedKey <=> $currentKey) < 0) {
+            $proposed = $this->loadParent($link, $proposedKey, 'proposed parent');
+
+            return [$this->loadParent($link, $currentKey, 'parent'), $proposed];
+        }
+
         return [
-            $this->loadParent($link, $preState->get($link->foreignKey), 'parent'),
-            $reparents ? $this->loadParent($link, $changes[$link->foreignKey], 'proposed parent') : null,
+            $this->loadParent($link, $currentKey, 'parent'),
+            $this->loadParent($link, $proposedKey, 'proposed parent'),
         ];
     }
 
