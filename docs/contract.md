@@ -206,7 +206,7 @@ resolved. Both interpreters consume the same `ResolvedReadPolicy`:
   stage by stage exactly as §2 describes.
 
 `Exists` at runtime needs relationship facts. They are **batch-prepared**:
-`RuntimeEvaluation::prepare($snapshots)` issues one bounded query per `Exists`
+`Runtime\RelationFactLoader::prepare($predicate, $snapshots)` issues one bounded query per `Exists`
 node per batch (inner rows by join key, chunked), and the inner predicate is
 then evaluated in PHP. Evaluating an `Exists` node that was not prepared is an
 error (`MissingFact`); it never lazy-loads per row. The number of queries depends on the policy

@@ -75,7 +75,7 @@ being built or a snapshot is being evaluated.
 | Operation | Behaviour | Test |
 |---|---|---|
 | `Exists::in($table)->match($outer, $inner)` (or `matchCols(...)`) correlated on anything other than an integer column on both sides | Rejected: `UncompilablePolicy` (a string key cannot be kept exact on every engine; MariaDB caches a correlated subquery by the outer column's own collation) | `tests/Policy/PredicateConstructionTest.php::test_an_exists_key_must_be_an_integer_on_both_sides`, `tests/Policy/PredicateParityTest.php::test_an_exists_may_only_be_correlated_on_integer_keys` |
-| evaluating an `Exists` node with `Runtime\PredicateEvaluator` that was not first batch-prepared with `RelationFactLoader`/`RuntimeEvaluation::prepare()` | Rejected: `MissingFact`; it never lazy-loads per row | `tests/Policy/RuntimeEvaluationTest.php::test_evaluating_an_unprepared_exists_is_an_error` |
+| evaluating an `Exists` node with `Runtime\PredicateEvaluator` that was not first batch-prepared with `RelationFactLoader::prepare()` | Rejected: `MissingFact`; it never lazy-loads per row | `tests/Policy/RuntimeEvaluationTest.php::test_evaluating_an_unprepared_exists_is_an_error` |
 | comparing a `datetime` column on SQLite | Compared at millisecond precision (`strftime('%Y-%m-%d %H:%M:%f', ...)`); two instants differing only below a millisecond are not distinguished there, unlike every other engine and the runtime evaluator | `tests/Policy/PredicateParityTest.php::test_sub_millisecond_datetimes_are_the_documented_engine_limit` |
 
 ## Returned models
