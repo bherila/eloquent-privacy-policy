@@ -59,6 +59,8 @@ cannot error.
 | `PolicyNotRegistered`            | a protected path reached a model with no policy                          |
 | `UncompilablePolicy`             | a collection policy contains something the SQL compiler cannot express   |
 | `UnsupportedProtectedOperation`  | a protected builder/model was asked to do something outside the matrix   |
+| `InvalidIdentifier`              | a table, column, operator or direction is not a plain trusted identifier |
+| `ActionDenied`                   | an action's rule set reduced to `Deny` (§6)                              |
 | `StageEvaluationFailed`          | one or more rules in an entered stage threw; wraps all of them, ordered by rule id |
 
 **Permutation invariance.** For a valid rule set, reordering rules within a
@@ -88,7 +90,7 @@ Contexts are built by a trusted application adapter after its own prerequisites
 (authentication, feature gates, section access) have succeeded. Nothing in a
 context is taken from client-supplied role or permission claims.
 
-`Viewer::id()` on an anonymous viewer throws. A `RuleSet` denies anonymous
+`Viewer::id()` on an anonymous viewer throws `MissingFact`. A `RuleSet` denies anonymous
 viewers outright (constant `false` predicate / `Deny`) unless it was declared
 with `->allowAnonymous()`, in which case its rules must branch on
 `$context->viewer->isAnonymous()` themselves.
@@ -159,9 +161,11 @@ attributes (no casts, no accessors).
 
 String equality is exact (case- and trailing-space-sensitive) on every engine.
 On MySQL/MariaDB, whose default collations are case-insensitive, the compiler
-emits `(col = ? AND BINARY col = BINARY ?)`: the first conjunct can use an
-index, the second makes the match exact. Ordered string comparison is not
-offered. Datetime parity assumes the application stores UTC.
+emits `(col = ? AND CAST(col AS BINARY) = CAST(? AS BINARY))`: the first
+conjunct can use an index, the second makes the match exact. This assumes the
+column and the connection share a character set (the framework default,
+`utf8mb4`). Ordered string comparison is not offered. Datetime parity assumes
+the application stores UTC.
 
 ### 4.4 The composed read predicate
 
@@ -206,6 +210,13 @@ Privacy::query(Record::class, $context)           // explicit registry
 
 `privacyQuery` was chosen so it cannot collide with an application scope such as
 `visibleTo`. Passing `null` throws `MissingContext`.
+
+The model must use the `HasPrivacyPolicy` trait either way, because the trait
+carries the guards of §5.2; the registry only changes where the *policy* comes
+from (`Privacy::register()` wins over a static `privacyPolicy()` method). A
+method declared on the model class itself silently wins over a trait method, so
+a model that overrides any guarded method is refused with
+`UnsupportedProtectedOperation` rather than queried with its guards disabled.
 
 Both return `Query\ProtectedBuilder<TModel>`. It **composes** a native Eloquent
 builder and never exposes it: there is no `__call`, no macro forwarding, no
@@ -260,8 +271,17 @@ many-to-many paths, pivots, `withTrashed`/scope removal, bulk `update`/`delete`/
 throws. Queue-restored models are ordinary models: jobs must re-authorise from
 identifiers, not from a serialised decision.
 
-Model-wide strict adoption and static-analysis checks for adopted paths are
-**[staged]**.
+A caller filter may name any column of the root table. Filtering is confined to
+rows the viewer may already see, but it can still act as an oracle on a column
+the application never outputs; which columns are disclosed is output shaping,
+which stays with the application.
+
+**[staged]**, in the order they are expected to be needed: cursor pagination;
+relations that carry their own constraints; a way for the application to tell
+"not visible" from "visible but this action is not permitted" without the
+package disclosing either to the client; static-analysis checks that flag
+ordinary queries on adopted models inside adopted paths; model-wide strict
+adoption.
 
 ## 6. Actions **[slice 1]**
 
