@@ -23,17 +23,18 @@ package. Adoption is per model and per call site, not global.
 - Laravel 13 components: `illuminate/contracts`, `illuminate/database`,
   `illuminate/support` (`^13.0`)
 
-**Tested engines.** The suite was actually run, in this environment, against:
+**Tested engines.** The Package suite (PHP 8.4 and 8.5) and the Concurrency
+suite (PHP 8.4) have been run against exactly these versions:
 
-- SQLite 3.53.4 (in-process, the default for local development and for most
-  of the test suite)
-- MariaDB 10.11.19 (loopback, for the concurrency suite and the benchmark)
+| Engine  | Version            | Where          | Suites                         |
+|---------|--------------------|----------------|--------------------------------|
+| SQLite  | 3.45.1, 3.53.4     | CI, local      | Package (foreign keys enabled) |
+| MySQL   | 8.4.11             | CI             | Package, Concurrency           |
+| MariaDB | 11.4.13, 10.11.19  | CI, local      | Package, Concurrency           |
 
-MySQL 8.4 and MariaDB 11.4 are **configured in CI**
-(`.github/workflows/ci.yml`) but were not run in the environment this
-documentation was written against. "Configured in CI" is not a claim that
-they currently pass — only that a workflow exists that runs the suite against
-them on push and pull request.
+Nothing is inferred across engines: the revocation protocol is claimed for
+MySQL and MariaDB only, and SQLite is never used as evidence of locking
+behaviour. The benchmark was measured on SQLite and MariaDB 10.11 only.
 
 ## Install
 
@@ -498,9 +499,9 @@ Beyond the contract's own list:
 
 - **No Packagist release.** See "Install" above — this is a VCS-repository,
   pinned-commit dependency only.
-- **MySQL was not run locally.** Only SQLite and MariaDB were exercised in the
-  environment this documentation and its examples were verified against; MySQL
-  8.4 is configured in CI but its result was not observed here.
+- **MySQL runs in CI only.** MySQL 8.4 is exercised by the CI matrix (Package and
+  Concurrency suites); it was not available locally, and the benchmark was not
+  measured on it.
 - **Static-analysis checks are not implemented.** This is the same item as
   above from the contract's list, called out again here because it is easy to
   read past: nothing in this package will warn you if you keep querying an
